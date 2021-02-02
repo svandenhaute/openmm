@@ -163,6 +163,73 @@ void testRandomSeed() {
     }
 }
 
+void testWater() {
+    const int gridSize = 8;
+    const int numMolecules = gridSize*gridSize*gridSize;
+    const int frequency = 10;
+    const int steps = 400;
+    const double temp = 273.15;
+    const double pressure = 3;
+    const double spacing = 0.32;
+    const double angle = 109.47*M_PI/180;
+    const double dOH = 0.1;
+    const double dHH = dOH*2*std::sin(0.5*angle);
+
+    // Create a box of SPC water molecules.
+
+    System system;
+    system.setDefaultPeriodicBoxVectors(Vec3(gridSize*spacing, 0, 0), Vec3(0, gridSize*spacing, 0), Vec3(0, 0, gridSize*spacing));
+    NonbondedForce* nonbonded = new NonbondedForce();
+    nonbonded->setNonbondedMethod(NonbondedForce::CutoffPeriodic);
+    nonbonded->setUseDispersionCorrection(true);
+    vector<Vec3> positions;
+    Vec3 offset1(dOH, 0, 0);
+    Vec3 offset2(dOH*std::cos(angle), dOH*std::sin(angle), 0);
+    for (int i = 0; i < gridSize; ++i) {
+        for (int j = 0; j < gridSize; ++j) {
+            for (int k = 0; k < gridSize; ++k) {
+                int firstParticle = system.getNumParticles();
+                system.addParticle(16.0);
+                system.addParticle(1.0);
+                system.addParticle(1.0);
+                nonbonded->addParticle(-0.82, 0.316557, 0.650194);
+                nonbonded->addParticle(0.41, 1, 0);
+                nonbonded->addParticle(0.41, 1, 0);
+                Vec3 pos = Vec3(spacing*i, spacing*j, spacing*k);
+                positions.push_back(pos);
+                positions.push_back(pos+offset1);
+                positions.push_back(pos+offset2);
+                system.addConstraint(firstParticle, firstParticle+1, dOH);
+                system.addConstraint(firstParticle, firstParticle+2, dOH);
+                system.addConstraint(firstParticle+1, firstParticle+2, dHH);
+                nonbonded->addException(firstParticle, firstParticle+1, 0, 1, 0);
+                nonbonded->addException(firstParticle, firstParticle+2, 0, 1, 0);
+                nonbonded->addException(firstParticle+1, firstParticle+2, 0, 1, 0);
+            }
+        }
+    }
+    system.addForce(nonbonded);
+    MonteCarloFullBarostat* barostat = new MonteCarloFullBarostat(pressure, temp, frequency, true);
+    system.addForce(barostat);
+
+    // Simulate it and see if the density matches the expected value (1 g/mL).
+
+    LangevinIntegrator integrator(temp, 1.0, 0.002);
+    Context context(system, integrator, platform);
+    context.setPositions(positions);
+    integrator.step(2000);
+    double volume = 0.0;
+    for (int j = 0; j < steps; ++j) {
+        Vec3 box[3];
+        context.getState(0).getPeriodicBoxVectors(box[0], box[1], box[2]);
+        volume += box[0][0]*box[1][1]*box[2][2];
+        integrator.step(frequency);
+    }
+    volume /= steps;
+    double density = numMolecules*18/(AVOGADRO*volume*1e-21);
+    ASSERT_USUALLY_EQUAL_TOL(1.0, density, 0.02);
+}
+
 void runPlatformTests();
 
 int main(int argc, char* argv[]) {
@@ -170,6 +237,7 @@ int main(int argc, char* argv[]) {
         initializeTests(argc, argv);
         testIdealGas();
         // testRandomSeed();
+        // testWater() passes but takes a long time on the reference platform
         runPlatformTests();
     }
     catch(const exception& e) {
