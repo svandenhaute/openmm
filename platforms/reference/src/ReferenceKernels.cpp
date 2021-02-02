@@ -2718,7 +2718,8 @@ ReferenceApplyMonteCarloBarostatKernel::~ReferenceApplyMonteCarloBarostatKernel(
         delete barostat;
 }
 
-void ReferenceApplyMonteCarloBarostatKernel::initialize(const System& system, const Force& barostat) {
+void ReferenceApplyMonteCarloBarostatKernel::initialize(const System& system, const Force& barostat, bool scaleMolecules) {
+    scaleMolecules = scaleMolecules;
 }
 
 void ReferenceApplyMonteCarloBarostatKernel::scaleCoordinates(ContextImpl& context, double scaleX, double scaleY, double scaleZ) {
@@ -2726,7 +2727,7 @@ void ReferenceApplyMonteCarloBarostatKernel::scaleCoordinates(ContextImpl& conte
         barostat = new ReferenceMonteCarloBarostat(context.getSystem().getNumParticles(), context.getMolecules());
     vector<Vec3>& posData = extractPositions(context);
     Vec3* boxVectors = extractBoxVectors(context);
-    barostat->applyBarostat(posData, boxVectors, scaleX, scaleY, scaleZ);
+    barostat->applyBarostat(posData, boxVectors, scaleX, scaleY, scaleZ, scaleMolecules);
 }
 
 void ReferenceApplyMonteCarloBarostatKernel::restoreCoordinates(ContextImpl& context) {

@@ -65,10 +65,11 @@ class ReferenceMonteCarloBarostat {
          @param scaleX             the factor by which to scale atomic x coordinates
          @param scaleY             the factor by which to scale atomic y coordinates
          @param scaleZ             the factor by which to scale atomic z coordinates
+         @param scaleMolecules     determines whether to scale atomic coordinates or molecular centers of mass
 
          --------------------------------------------------------------------------------------- */
 
-      void applyBarostat(std::vector<OpenMM::Vec3>& atomPositions, const OpenMM::Vec3* boxVectors, double scaleX, double scaleY, double scaleZ);
+      void applyBarostat(std::vector<OpenMM::Vec3>& atomPositions, const OpenMM::Vec3* boxVectors, double scaleX, double scaleY, double scaleZ, bool scaleMolecules);
 
       /**---------------------------------------------------------------------------------------
 

@@ -1539,10 +1539,11 @@ public:
     /**
      * Initialize the kernel.
      *
-     * @param system     the System this kernel will be applied to
-     * @param barostat   the MonteCarloBarostat this kernel will be used for
+     * @param system            the System this kernel will be applied to
+     * @param barostat          the MonteCarloBarostat this kernel will be used for
+     * @param scaleMolecules    determines the type of coordinate scaling to apply
      */
-    void initialize(const System& system, const Force& barostat);
+    void initialize(const System& system, const Force& barostat, bool scaleMolecules = true);
     /**
      * Attempt a Monte Carlo step, scaling particle positions (or cluster centers) by a specified value.
      * This version scales the x, y, and z positions independently.
@@ -1565,6 +1566,7 @@ public:
     void restoreCoordinates(ContextImpl& context);
 private:
     ReferenceMonteCarloBarostat* barostat;
+    bool scaleMolecules;
 };
 
 /**
