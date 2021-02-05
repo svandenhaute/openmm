@@ -33,4 +33,5 @@
 #include "TestMonteCarloFullBarostat.h"
 
 void runPlatformTests() {
+    // testDiatomicGas();
 }

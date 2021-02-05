@@ -44,3 +44,21 @@ extern "C" __global__ void scalePositions(float scaleX, float scaleY, float scal
         }
     }
 }
+
+
+// Scale atomic positions instead of molecules
+
+extern "C" __global__ void scaleAtomicPositions(float scaleX, float scaleY, float scaleZ, int numAtoms, real4 periodicBoxSize,
+        real4 invPeriodicBoxSize, real4 periodicBoxVecX, real4 periodicBoxVecY, real4 periodicBoxVecZ, real4* __restrict__ posq) {
+    for (int index = blockIdx.x*blockDim.x+threadIdx.x; index < numAtoms; index += blockDim.x*gridDim.x) {
+        real3 atom = make_real3(
+                posq[index].x,
+                posq[index].y,
+                posq[index].z);
+        APPLY_PERIODIC_TO_POS(atom);
+
+        posq[index].x = atom.x * scaleX;
+        posq[index].y = atom.y * scaleY;
+        posq[index].z = atom.z * scaleZ;
+    }
+}

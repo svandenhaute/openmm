@@ -1737,58 +1737,94 @@ void CudaApplyMonteCarloBarostatKernel::initialize(const System& system, const F
     savedPositions.initialize(cu, cu.getPaddedNumAtoms(), cu.getUseDoublePrecision() ? sizeof(double4) : sizeof(float4), "savedPositions");
     savedForces.initialize<long long>(cu, cu.getPaddedNumAtoms()*3, "savedForces");
     CUmodule module = cu.createModule(CudaKernelSources::monteCarloBarostat);
-    kernel = cu.getKernel(module, "scalePositions");
+    scaleMoleculesAsRigid = rigidScaling;
+    if (scaleMoleculesAsRigid) {
+        kernel = cu.getKernel(module, "scalePositions");
+    } else {
+        kernel = cu.getKernel(module, "scaleAtomicPositions");
+    }
+
 }
 
 void CudaApplyMonteCarloBarostatKernel::scaleCoordinates(ContextImpl& context, double scaleX, double scaleY, double scaleZ) {
     cu.setAsCurrent();
-    if (!hasInitializedKernels) {
-        hasInitializedKernels = true;
+    if (scaleMoleculesAsRigid) {
+        if (!hasInitializedKernels) {
+            hasInitializedKernels = true;
 
-        // Create the arrays with the molecule definitions.
+            // Create the arrays with the molecule definitions.
 
-        vector<vector<int> > molecules = context.getMolecules();
-        numMolecules = molecules.size();
-        moleculeAtoms.initialize<int>(cu, cu.getNumAtoms(), "moleculeAtoms");
-        moleculeStartIndex.initialize<int>(cu, numMolecules+1, "moleculeStartIndex");
-        vector<int> atoms(moleculeAtoms.getSize());
-        vector<int> startIndex(moleculeStartIndex.getSize());
-        int index = 0;
-        for (int i = 0; i < numMolecules; i++) {
-            startIndex[i] = index;
-            for (int molecule : molecules[i])
-                atoms[index++] = molecule;
+            vector<vector<int> > molecules = context.getMolecules();
+            numMolecules = molecules.size();
+            moleculeAtoms.initialize<int>(cu, cu.getNumAtoms(), "moleculeAtoms");
+            moleculeStartIndex.initialize<int>(cu, numMolecules+1, "moleculeStartIndex");
+            vector<int> atoms(moleculeAtoms.getSize());
+            vector<int> startIndex(moleculeStartIndex.getSize());
+            int index = 0;
+            for (int i = 0; i < numMolecules; i++) {
+                startIndex[i] = index;
+                for (int molecule : molecules[i])
+                    atoms[index++] = molecule;
+            }
+            startIndex[numMolecules] = index;
+            moleculeAtoms.upload(atoms);
+            moleculeStartIndex.upload(startIndex);
+
+            // Initialize the kernel arguments.
+            
         }
-        startIndex[numMolecules] = index;
-        moleculeAtoms.upload(atoms);
-        moleculeStartIndex.upload(startIndex);
-
-        // Initialize the kernel arguments.
-        
+        int bytesToCopy = cu.getPosq().getSize()*(cu.getUseDoublePrecision() ? sizeof(double4) : sizeof(float4));
+        CUresult result = cuMemcpyDtoD(savedPositions.getDevicePointer(), cu.getPosq().getDevicePointer(), bytesToCopy);
+        if (result != CUDA_SUCCESS) {
+            std::stringstream m;
+            m<<"Error saving positions for MC barostat: "<<cu.getErrorString(result)<<" ("<<result<<")";
+            throw OpenMMException(m.str());
+        }
+        result = cuMemcpyDtoD(savedForces.getDevicePointer(), cu.getForce().getDevicePointer(), savedForces.getSize()*savedForces.getElementSize());
+        if (result != CUDA_SUCCESS) {
+            std::stringstream m;
+            m<<"Error saving forces for MC barostat: "<<cu.getErrorString(result)<<" ("<<result<<")";
+            throw OpenMMException(m.str());
+        }
+        float scalefX = (float) scaleX;
+        float scalefY = (float) scaleY;
+        float scalefZ = (float) scaleZ;
+        void* args[] = {&scalefX, &scalefY, &scalefZ, &numMolecules, cu.getPeriodicBoxSizePointer(), cu.getInvPeriodicBoxSizePointer(),
+                        cu.getPeriodicBoxVecXPointer(), cu.getPeriodicBoxVecYPointer(), cu.getPeriodicBoxVecZPointer(),
+                        &cu.getPosq().getDevicePointer(), &moleculeAtoms.getDevicePointer(), &moleculeStartIndex.getDevicePointer()};
+        cu.executeKernel(kernel, args, cu.getNumAtoms());
+        for (auto& offset : cu.getPosCellOffsets())
+            offset = mm_int4(0, 0, 0, 0);
+        lastAtomOrder = cu.getAtomIndex();
+    } else {
+        if (!hasInitializedKernels) {
+            hasInitializedKernels = true;
+        }
+        int bytesToCopy = cu.getPosq().getSize()*(cu.getUseDoublePrecision() ? sizeof(double4) : sizeof(float4));
+        CUresult result = cuMemcpyDtoD(savedPositions.getDevicePointer(), cu.getPosq().getDevicePointer(), bytesToCopy);
+        if (result != CUDA_SUCCESS) {
+            std::stringstream m;
+            m<<"Error saving positions for MC barostat: "<<cu.getErrorString(result)<<" ("<<result<<")";
+            throw OpenMMException(m.str());
+        }
+        result = cuMemcpyDtoD(savedForces.getDevicePointer(), cu.getForce().getDevicePointer(), savedForces.getSize()*savedForces.getElementSize());
+        if (result != CUDA_SUCCESS) {
+            std::stringstream m;
+            m<<"Error saving forces for MC barostat: "<<cu.getErrorString(result)<<" ("<<result<<")";
+            throw OpenMMException(m.str());
+        }
+        float scalefX = (float) scaleX;
+        float scalefY = (float) scaleY;
+        float scalefZ = (float) scaleZ;
+        numAtoms = cu.getNumAtoms();
+        void* args[] = {&scalefX, &scalefY, &scalefZ, &numAtoms, cu.getPeriodicBoxSizePointer(), cu.getInvPeriodicBoxSizePointer(),
+                        cu.getPeriodicBoxVecXPointer(), cu.getPeriodicBoxVecYPointer(), cu.getPeriodicBoxVecZPointer(),
+                        &cu.getPosq().getDevicePointer()};
+        cu.executeKernel(kernel, args, cu.getNumAtoms());
+        for (auto& offset : cu.getPosCellOffsets())
+            offset = mm_int4(0, 0, 0, 0);
+        lastAtomOrder = cu.getAtomIndex();
     }
-    int bytesToCopy = cu.getPosq().getSize()*(cu.getUseDoublePrecision() ? sizeof(double4) : sizeof(float4));
-    CUresult result = cuMemcpyDtoD(savedPositions.getDevicePointer(), cu.getPosq().getDevicePointer(), bytesToCopy);
-    if (result != CUDA_SUCCESS) {
-        std::stringstream m;
-        m<<"Error saving positions for MC barostat: "<<cu.getErrorString(result)<<" ("<<result<<")";
-        throw OpenMMException(m.str());
-    }
-    result = cuMemcpyDtoD(savedForces.getDevicePointer(), cu.getForce().getDevicePointer(), savedForces.getSize()*savedForces.getElementSize());
-    if (result != CUDA_SUCCESS) {
-        std::stringstream m;
-        m<<"Error saving forces for MC barostat: "<<cu.getErrorString(result)<<" ("<<result<<")";
-        throw OpenMMException(m.str());
-    }
-    float scalefX = (float) scaleX;
-    float scalefY = (float) scaleY;
-    float scalefZ = (float) scaleZ;
-    void* args[] = {&scalefX, &scalefY, &scalefZ, &numMolecules, cu.getPeriodicBoxSizePointer(), cu.getInvPeriodicBoxSizePointer(),
-                    cu.getPeriodicBoxVecXPointer(), cu.getPeriodicBoxVecYPointer(), cu.getPeriodicBoxVecZPointer(),
-                    &cu.getPosq().getDevicePointer(), &moleculeAtoms.getDevicePointer(), &moleculeStartIndex.getDevicePointer()};
-    cu.executeKernel(kernel, args, cu.getNumAtoms());
-    for (auto& offset : cu.getPosCellOffsets())
-        offset = mm_int4(0, 0, 0, 0);
-    lastAtomOrder = cu.getAtomIndex();
 }
 
 void CudaApplyMonteCarloBarostatKernel::restoreCoordinates(ContextImpl& context) {

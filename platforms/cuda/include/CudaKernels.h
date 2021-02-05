@@ -487,12 +487,14 @@ private:
     CudaContext& cu;
     bool hasInitializedKernels;
     int numMolecules;
+    int numAtoms;
     CudaArray savedPositions;
     CudaArray savedForces;
     CudaArray moleculeAtoms;
     CudaArray moleculeStartIndex;
     CUfunction kernel;
     std::vector<int> lastAtomOrder;
+    bool scaleMoleculesAsRigid;
 };
 
 } // namespace OpenMM
