@@ -64,40 +64,54 @@ ReferenceMonteCarloBarostat::~ReferenceMonteCarloBarostat() {
 
   --------------------------------------------------------------------------------------- */
 
-void ReferenceMonteCarloBarostat::applyBarostat(vector<Vec3>& atomPositions, const Vec3* boxVectors, double scaleX, double scaleY, double scaleZ, bool scaleMolecules) {
+void ReferenceMonteCarloBarostat::applyBarostat(vector<Vec3>& atomPositions, const Vec3* boxVectors, double scaleX, double scaleY, double scaleZ, bool scaleMoleculesAsRigid) {
     int numAtoms = savedAtomPositions[0].size();
     for (int i = 0; i < numAtoms; i++)
         for (int j = 0; j < 3; j++)
             savedAtomPositions[j][i] = atomPositions[i][j];
 
-    // Loop over molecules.
+    if (scaleMoleculesAsRigid) {
+        // Loop over molecules.
 
-    for (auto& molecule : molecules) {
-        // Find the molecule center.
+        for (auto& molecule : molecules) {
+            // Find the molecule center.
 
-        Vec3 pos(0, 0, 0);
-        for (int atom : molecule) {
-            Vec3& atomPos = atomPositions[atom];
-            pos += atomPos;
+            Vec3 pos(0, 0, 0);
+            for (int atom : molecule) {
+                Vec3& atomPos = atomPositions[atom];
+                pos += atomPos;
+            }
+            pos /= molecule.size();
+
+            // Move it into the first periodic box.
+
+            Vec3 newPos = pos;
+            newPos -= boxVectors[2]*floor(newPos[2]/boxVectors[2][2]);
+            newPos -= boxVectors[1]*floor(newPos[1]/boxVectors[1][1]);
+            newPos -= boxVectors[0]*floor(newPos[0]/boxVectors[0][0]);
+
+            // Now scale the position of the molecule center.
+
+            newPos[0] *= scaleX;
+            newPos[1] *= scaleY;
+            newPos[2] *= scaleZ;
+            Vec3 offset = newPos-pos;
+            for (int atom : molecule) {
+                Vec3& atomPos = atomPositions[atom];
+                atomPos += offset;
+            }
         }
-        pos /= molecule.size();
+    } else {
+        for (auto& pos : atomPositions) {
+            // move atom in first periodic box
+            pos -= boxVectors[2]*floor(pos[2]/boxVectors[2][2]);
+            pos -= boxVectors[1]*floor(pos[1]/boxVectors[1][1]);
+            pos -= boxVectors[0]*floor(pos[0]/boxVectors[0][0]);
 
-        // Move it into the first periodic box.
-
-        Vec3 newPos = pos;
-        newPos -= boxVectors[2]*floor(newPos[2]/boxVectors[2][2]);
-        newPos -= boxVectors[1]*floor(newPos[1]/boxVectors[1][1]);
-        newPos -= boxVectors[0]*floor(newPos[0]/boxVectors[0][0]);
-
-        // Now scale the position of the molecule center.
-
-        newPos[0] *= scaleX;
-        newPos[1] *= scaleY;
-        newPos[2] *= scaleZ;
-        Vec3 offset = newPos-pos;
-        for (int atom : molecule) {
-            Vec3& atomPos = atomPositions[atom];
-            atomPos += offset;
+            // apply scaling
+            pos[0] *= scaleX;
+            pos[1] *= scaleY;
+            pos[2] *= scaleZ;
         }
     }
 }

@@ -40,8 +40,6 @@
 #include <vector>
 #include <algorithm>
 
-#include<iostream>
-
 using namespace OpenMM;
 using namespace OpenMM_SFMT;
 using std::vector;
