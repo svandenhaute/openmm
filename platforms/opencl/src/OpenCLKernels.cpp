@@ -1897,7 +1897,7 @@ void OpenCLCalcCustomCVForceKernel::copyParametersToContext(ContextImpl& context
         delete function.second;
 }
 
-void OpenCLApplyMonteCarloBarostatKernel::initialize(const System& system, const Force& thermostat) {
+void OpenCLApplyMonteCarloBarostatKernel::initialize(const System& system, const Force& thermostat, bool rigidScaling) {
     savedPositions.initialize(cl, cl.getPaddedNumAtoms(), cl.getUseDoublePrecision() ? sizeof(mm_double4) : sizeof(mm_float4), "savedPositions");
     savedForces.initialize(cl, cl.getPaddedNumAtoms(), cl.getUseDoublePrecision() ? sizeof(mm_double4) : sizeof(mm_float4), "savedForces");
     cl::Program program = cl.createProgram(OpenCLKernelSources::monteCarloBarostat);

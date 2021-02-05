@@ -53,9 +53,8 @@ void MonteCarloFullBarostatImpl::initialize(ContextImpl& context) {
     if (!context.getSystem().usesPeriodicBoundaryConditions())
         throw OpenMMException("A barostat cannot be used with a non-periodic system");
     kernel = context.getPlatform().createKernel(ApplyMonteCarloBarostatKernel::Name(), context);
-    // pass argument to initialize specifying type of coordinate scaling;
-    // dirty fix
-    kernel.getAs<ApplyMonteCarloBarostatKernel>().initialize(context.getSystem(), owner, owner.getScaleMolecules());
+    // pass argument to initialize which specifies type of coordinate scaling
+    kernel.getAs<ApplyMonteCarloBarostatKernel>().initialize(context.getSystem(), owner, owner.getScaleMoleculesAsRigid());
     Vec3 box[3];
     context.getPeriodicBoxVectors(box[0], box[1], box[2]);
     double volume = box[0][0]*box[1][1]*box[2][2];
@@ -124,7 +123,7 @@ void MonteCarloFullBarostatImpl::updateContextState(ContextImpl& context, bool& 
     // Compute the energy of the modified system.
 
     double numberOfScaledParticles;
-    if (owner.getScaleMolecules()) {
+    if (owner.getScaleMoleculesAsRigid()) {
         numberOfScaledParticles = context.getMolecules().size();
     } else {
         numberOfScaledParticles = context.getSystem().getNumParticles();
@@ -143,9 +142,10 @@ void MonteCarloFullBarostatImpl::updateContextState(ContextImpl& context, bool& 
         context.getOwner().setPeriodicBoxVectors(box[0], box[1], box[2]);
         newVolume = volume;
     }
-    else
+    else {
         numAccepted++;
         forcesInvalid = true;
+    }
     numAttempted++;
     if (numAttempted >= 10) {
         if (numAccepted < 0.25*numAttempted) {

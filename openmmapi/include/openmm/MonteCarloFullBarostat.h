@@ -81,7 +81,7 @@ public:
      * @param frequency           the frequency at which Monte Carlo pressure changes should be attempted (in time steps)
      * @param scaleMolecules      the type of coordinate scaling to apply
      */
-    MonteCarloFullBarostat(double defaultPressure, double defaultTemperature, int frequency = 25, bool scaleMolecules = true);
+    MonteCarloFullBarostat(double defaultPressure, double defaultTemperature, int frequency = 25, bool scaleMoleculesAsRigid = true);
     /**
      * Get the default pressure acting on the system (in bar).
      *
@@ -163,21 +163,21 @@ public:
      *
      * @returns true if scaling is applied to molecular centers of mass
      */
-    bool getScaleMolecules() const {
-        return scaleMolecules;
+    bool getScaleMoleculesAsRigid() const {
+        return scaleMoleculesAsRigid;
     }
     /**
      * Sets the scaling to apply only to molecular centers of mass.
      * This variable is passed onto ApplyMonteCarloBarostatKernel::initialize()
      *
      */
-    void setScaleMolecules(bool scale) {
-        scaleMolecules = scale;
+    void setScaleMoleculesAsRigid(bool scaleRigid) {
+        scaleMoleculesAsRigid = scaleRigid;
     }
 protected:
     ForceImpl* createImpl() const;
 private:
-    bool scaleMolecules;
+    bool scaleMoleculesAsRigid;
     double defaultPressure, defaultTemperature;
     int frequency, randomNumberSeed;
 };

@@ -1732,7 +1732,7 @@ void CudaCalcCustomCVForceKernel::copyParametersToContext(ContextImpl& context, 
         delete function.second;
 }
 
-void CudaApplyMonteCarloBarostatKernel::initialize(const System& system, const Force& thermostat) {
+void CudaApplyMonteCarloBarostatKernel::initialize(const System& system, const Force& thermostat, bool rigidScaling) {
     cu.setAsCurrent();
     savedPositions.initialize(cu, cu.getPaddedNumAtoms(), cu.getUseDoublePrecision() ? sizeof(double4) : sizeof(float4), "savedPositions");
     savedForces.initialize<long long>(cu, cu.getPaddedNumAtoms()*3, "savedForces");
