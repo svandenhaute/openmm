@@ -1,5 +1,5 @@
-#ifndef OPENMM_MONTECARLOANISOTROPICBAROSTAT_H_
-#define OPENMM_MONTECARLOANISOTROPICBAROSTAT_H_
+#ifndef OPENMM_MONTECARLOFULLBAROSTAT_H_
+#define OPENMM_MONTECARLOFULLBAROSTAT_H_
 
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
@@ -184,4 +184,4 @@ private:
 
 } // namespace OpenMM
 
-#endif /*OPENMM_MONTECARLOANISOTROPICBAROSTAT_H_*/
+#endif /*OPENMM_MONTECARLOFULLBAROSTAT_H_*/
