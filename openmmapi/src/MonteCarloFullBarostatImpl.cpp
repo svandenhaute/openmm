@@ -58,9 +58,11 @@ void MonteCarloFullBarostatImpl::initialize(ContextImpl& context) {
     Vec3 box[3];
     context.getPeriodicBoxVectors(box[0], box[1], box[2]);
     double volume = box[0][0]*box[1][1]*box[2][2];
-    trialScale   = 0.01 * std::pow(volume, 1.0/3.0);
-    numAttempted = 0;
-    numAccepted  = 0;
+    for (int i = 0; i < 6; ++i) {
+        trialScale[i]  = 0.01 * std::pow(volume, 1.0/3.0);
+        numAttempted[i] = 0;
+        numAccepted[i]  = 0;
+    }
 
     SimTKOpenMMUtilities::setRandomNumberSeed(owner.getRandomNumberSeed());
 }
@@ -80,20 +82,24 @@ void MonteCarloFullBarostatImpl::updateContextState(ContextImpl& context, bool& 
     // Generate trial box vectors
 
     Vec3 box[3], trial[3];
-    context.getPeriodicBoxVectors(box[0], box[1], box[2]);
+    context.getPeriodicBoxVectors(box[0]  , box[1]  , box[2]  );
+    context.getPeriodicBoxVectors(trial[0], trial[1], trial[2]);
     double delta;
-    delta = trialScale * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
-    trial[0][0] = box[0][0] + delta;
-    delta = trialScale * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
-    trial[1][0] = box[1][0] + delta;
-    delta = trialScale * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
-    trial[1][1] = box[1][1] + delta;
-    delta = trialScale * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
-    trial[2][0] = box[2][0] + delta;
-    delta = trialScale * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
-    trial[2][1] = box[2][1] + delta;
-    delta = trialScale * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
-    trial[2][2] = box[2][2] + delta;
+    int trialIndex = (int) std::floor(SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber() * 6);
+    switch (trialIndex) {
+        case 0 :
+            trial[0][0] += trialScale[0] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
+        case 1 :
+            trial[1][1] += trialScale[1] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
+        case 2 :
+            trial[2][2] += trialScale[2] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
+        case 3 :
+            trial[1][0] += trialScale[3] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
+        case 4 :
+            trial[2][0] += trialScale[4] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
+        case 5 :
+            trial[2][1] += trialScale[5] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
+    }
 
     // recompute reduced form by flipping/linear combinations
 
@@ -143,20 +149,20 @@ void MonteCarloFullBarostatImpl::updateContextState(ContextImpl& context, bool& 
         newVolume = volume;
     }
     else {
-        numAccepted++;
+        numAccepted[trialIndex]++;
         forcesInvalid = true;
     }
-    numAttempted++;
-    if (numAttempted >= 10) {
-        if (numAccepted < 0.25*numAttempted) {
-            trialScale /= 1.1;
-            numAttempted = 0;
-            numAccepted = 0;
+    numAttempted[trialIndex]++;
+    if (numAttempted[trialIndex] >= 10) {
+        if (numAccepted[trialIndex] < 0.25*numAttempted[trialIndex]) {
+            trialScale[trialIndex] /= 1.1;
+            numAttempted[trialIndex] = 0;
+            numAccepted[trialIndex]  = 0;
         }
-        else if (numAccepted > 0.75*numAttempted) {
-            trialScale = std::min(trialScale*1.1, std::pow(newVolume, 1.0/3.0)*0.3);
-            numAttempted = 0;
-            numAccepted = 0;
+        else if (numAccepted[trialIndex] > 0.75*numAttempted[trialIndex]) {
+            trialScale[trialIndex] = std::min(trialScale[trialIndex]*1.1, std::pow(newVolume, 1.0/3.0)*0.3);
+            numAttempted[trialIndex] = 0;
+            numAccepted[trialIndex]  = 0;
         }
     }
 

@@ -59,8 +59,9 @@ public:
     std::vector<std::string> getKernelNames();
 private:
     const MonteCarloFullBarostat& owner;
-    int step, numAttempted, numAccepted;
-    double trialScale;
+    int step;
+    double trialScale[6];
+    int numAttempted[6], numAccepted[6];
     Kernel kernel;
 };
 
