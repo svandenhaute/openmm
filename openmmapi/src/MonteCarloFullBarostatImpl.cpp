@@ -53,6 +53,8 @@ void MonteCarloFullBarostatImpl::initialize(ContextImpl& context) {
     kernel = context.getPlatform().createKernel(ApplyMonteCarloBarostatKernel::Name(), context);
     // pass argument to initialize which specifies type of coordinate scaling
     kernel.getAs<ApplyMonteCarloBarostatKernel>().initialize(context.getSystem(), owner, owner.getScaleMoleculesAsRigid());
+
+    // to be changed
     Vec3 box[3];
     context.getPeriodicBoxVectors(box[0], box[1], box[2]);
     double volume = box[0][0]*box[1][1]*box[2][2];
