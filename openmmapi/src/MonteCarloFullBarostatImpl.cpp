@@ -58,7 +58,7 @@ void MonteCarloFullBarostatImpl::initialize(ContextImpl& context) {
     Vec3 box[3];
     context.getPeriodicBoxVectors(box[0], box[1], box[2]);
     double volume = box[0][0]*box[1][1]*box[2][2];
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < 3; ++i) {
         trialScale[i]  = 0.01 * std::pow(volume, 1.0/3.0);
         numAttempted[i] = 0;
         numAccepted[i]  = 0;
@@ -85,21 +85,19 @@ void MonteCarloFullBarostatImpl::updateContextState(ContextImpl& context, bool& 
     context.getPeriodicBoxVectors(box[0]  , box[1]  , box[2]  );
     context.getPeriodicBoxVectors(trial[0], trial[1], trial[2]);
     double delta;
-    int trialIndex = (int) std::floor(SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber() * 6);
+    int trialIndex = (int) std::floor(SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber() * 3);
     switch (trialIndex) {
         case 0 :
             trial[0][0] += trialScale[0] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
         case 1 :
+            trial[1][0] += trialScale[1] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
             trial[1][1] += trialScale[1] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
         case 2 :
+            trial[2][0] += trialScale[2] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
+            trial[2][1] += trialScale[2] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
             trial[2][2] += trialScale[2] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
-        case 3 :
-            trial[1][0] += trialScale[3] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
-        case 4 :
-            trial[2][0] += trialScale[4] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
-        case 5 :
-            trial[2][1] += trialScale[5] * 2 * (SimTKOpenMMUtilities::getUniformlyDistributedRandomNumber()-0.5);
     }
+    
 
     // recompute reduced form by flipping/linear combinations
 

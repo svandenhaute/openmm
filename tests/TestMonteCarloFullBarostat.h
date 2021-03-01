@@ -225,9 +225,9 @@ void runPlatformTests();
 int main(int argc, char* argv[]) {
     try {
         initializeTests(argc, argv);
+        testIdealGas();
         testAtomicScalingIdealGas();
         testRandomSeed();
-        testIdealGas();
         runPlatformTests();
     }
     catch(const exception& e) {

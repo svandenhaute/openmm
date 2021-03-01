@@ -60,8 +60,8 @@ public:
 private:
     const MonteCarloFullBarostat& owner;
     int step;
-    double trialScale[6];
-    int numAttempted[6], numAccepted[6];
+    double trialScale[3];
+    int numAttempted[3], numAccepted[3];
     Kernel kernel;
 };
 
